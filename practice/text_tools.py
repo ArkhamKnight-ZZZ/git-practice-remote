@@ -22,3 +22,5 @@ if __name__ == "__main__":
     print("Unique:", sorted(unique_words(sample)))
     print("Reverse:\n" + reverse_lines(sample))
     print("Hello World")
+    print("You know")
+    print("fsjdlkfjldsjflk")

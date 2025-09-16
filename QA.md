@@ -31,7 +31,7 @@
 **A：**
 - 默认 `git diff` 比较工作区与暂存区，检查未暂存的变更。
 - `git diff --staged`（`--cached`）比较暂存区与最近一次提交，确认待提交内容；`git diff HEAD` 查看所有本地差异。
-- `git diff origin/main..HEAD` 等比较当前分支与远程分支差异，提交流程前自检。
+- `git diff origin/main..HEAD` 等比较当前分支与远程分支差异，提交前自检。
 - `git diff <提交1> <提交2>`、`git diff <提交> -- <文件>` 用于任意提交或指定文件的对比；`--stat`、`--name-only` 等参数可调节输出摘要。
 - `git difftool` 配合外部工具获得图形化差异展示。
 
@@ -55,24 +55,27 @@
 ![git diff 示例](images/git-diff-example.png)
 
 ## Q8
-**Q：** git diff 输出中出现 “-” 加空行代表什么？warning “LF will be replaced by CRLF” 又是什么意思？
+**Q：** git diff 输出中出现 “-” + 空行代表什么？warning “LF will be replaced by CRLF” 又是什么意思？
 **A：**
-- 以 “-” 开头且内容为空的行表示旧版本存在一行纯空白（只有换行符）被删除。Git 会将空行视为实际内容，因此也会在 diff 中标出。
-- warning “LF will be replaced by CRLF the next time Git touches it” 表示文件目前使用 LF 换行符，而你的 Git 设置（如 `core.autocrlf=true`）会在写回时转换成 Windows 的 CRLF。这只是提示换行符将被转换，不影响改动本身。
+- 以 “-” 开头且内容为空的行表示旧版本有一行纯空白被删除，Git 仍会显示它以提示空行差异。
+- warning “LF will be replaced by CRLF the next time Git touches it” 表示文件当前使用 LF 换行符，在你的配置（如 `core.autocrlf=true`）下写回时会转换为 Windows 的 CRLF。这提醒你将发生换行符转换，对 diff 内容没有影响。
 
 ![git diff warning](images/git-diff-warning.png)
-
 ## Q9
-**Q：** `git reset --soft` 与 `git reset --hard` 的区别是什么？各在什么场景使用？
+**Q：** `git reset --soft` 与 `git reset --hard` 有什么区别？分别在什么场景使用？
 **A：**
-- `git reset --soft <提交>` 仅移动 `HEAD`，暂存区与工作区保持不变，适合整理最近提交、合并提交重新编写 commit。
-- `git reset --hard <提交>` 在移动 `HEAD` 的同时还原暂存区和工作区到目标提交，未保存的改动会丢失，用于彻底回滚到干净版本或放弃实验性修改。
-
-## Q10
-**Q：** `git log` 输出中的 `(HEAD -> master)` 代表什么？`HEAD` 和 `master` 分别是什么意思？
+- `git reset --soft <提交>` 仅移动 `HEAD`（当前分支指针），暂存区和工作区不变，常用于整理最近提交、合并多次提交重新编写 commit。
+- `git reset --hard <提交>` 在移动 `HEAD` 的同时，将暂存区和工作区都恢复到目标提交状态，未保存的改动会丢失，适合放弃实验性修改、回滚到干净版本。
+## Q11
+**Q：** git stash 有哪些常用用法？
 **A：**
-- `HEAD` 是当前检出的指针，通常指向你所在分支的最新提交。
-- `master` 是分支名称，这里代表默认主分支。
-- `(HEAD -> master)` 表示 `HEAD` 当前指向 `master` 分支，而 `master` 又指向该提交，说明这是当前分支的最新提交。
-
-![git log head](images/git-log-head.png)
+- `git stash push -m "备注"`：保存当前工作区与暂存区的改动并回到干净状态，`-m` 便于区分不同 stash。
+- `git stash list` / `git stash show -p stash@{0}`：查看 stash 列表与某条记录的具体差异。
+- `git stash apply [stash@{n}]`：恢复保存的改动且保留 stash；`git stash pop` 恢复后删除那条记录。
+- `git stash drop stash@{n}` 或 `git stash clear`：删除指定或全部 stash。
+- 常用变体：`git stash push --keep-index` 仅保存工作区改动；`git stash push --include-untracked` 将未跟踪文件一并保存。
+## Q12
+**Q：** 为什么 `git push -u origin main` 会被拒绝？`--force-with-lease` 是什么意思？
+**A：**
+- 远端 `main` 已有本地缺失的提交（例如通过 GitHub 网页或其它机器推送），未同步前推送会被拒绝。先执行 `git pull --ff-only origin main` 获取最新历史，解决冲突后再推送。
+- `git push --force-with-lease` 会在强制推送前检查远端分支是否仍指向你上次拉取的 commit，若已被他人更新则拒绝覆盖，比 `--force` 更安全；仅在确认远端历史可以被重写时使用。
