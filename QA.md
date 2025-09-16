@@ -79,3 +79,10 @@
 **A：**
 - 远端 `main` 已有本地缺失的提交（例如通过 GitHub 网页或其它机器推送），未同步前推送会被拒绝。先执行 `git pull --ff-only origin main` 获取最新历史，解决冲突后再推送。
 - `git push --force-with-lease` 会在强制推送前检查远端分支是否仍指向你上次拉取的 commit，若已被他人更新则拒绝覆盖，比 `--force` 更安全；仅在确认远端历史可以被重写时使用。
+## Q13
+**Q：** git rebase 是什么意思？如何使用？
+**A：**
+- `git rebase <目标分支>` 会把当前分支的提交重新应用到目标分支最新提交之后，保持历史线性。常用于在功能分支上同步主分支的最新变化。
+- 基本流程：更新目标分支（`git switch main && git pull --ff-only`）→ 切回功能分支执行 `git rebase main`，冲突时逐个解决并 `git rebase --continue`，若放弃则 `git rebase --abort`。
+- rebase 改写提交哈希，若分支已推送需使用 `git push --force-with-lease origin <branch>` 更新远端；避免对公共分支 rebase 以免影响他人。
+- 交互式 `git rebase -i main` 可合并、重排、修改提交信息，便于整理历史。
