@@ -26,3 +26,4 @@ if __name__ == "__main__":
     print("subtract(10, 4) ->", subtract(10, 4))
     print("multiply(6, 7) ->", multiply(6, 7))
     print("divide(5, 2) ->", divide(5, 2))
+    print("Hello Calculator!")
