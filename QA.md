@@ -86,3 +86,48 @@
 - 基本流程：更新目标分支（`git switch main && git pull --ff-only`）→ 切回功能分支执行 `git rebase main`，冲突时逐个解决并 `git rebase --continue`，若放弃则 `git rebase --abort`。
 - rebase 改写提交哈希，若分支已推送需使用 `git push --force-with-lease origin <branch>` 更新远端；避免对公共分支 rebase 以免影响他人。
 - 交互式 `git rebase -i main` 可合并、重排、修改提交信息，便于整理历史。
+## Q14
+**Q：** 在 `dev` 分支有未提交的修改，直接切换到 `main` 会怎样？如何补救？
+**A：**
+- 若改动不会与 `main` 冲突，切换成功但修改会带到 `main` 的工作区，容易误提交；若存在冲突则会被 Git 拒绝，要求先处理。
+- 补救：
+  1. 切回 `dev`（必要时加 `--merge`）：`git switch dev --merge`。
+  2. 立即 `git stash push -m "dev WIP"` 或完成提交 `git commit`，再切换分支。
+  3. 若已经在 `main` 上提交了这些改动，可用 `git revert` 或 `git reset` 回退，再到 `dev` 使用 `git cherry-pick`/`git stash pop` 恢复。
+- 建议养成切换分支前 `git status` 检查、必要时使用 `stash` 的习惯。
+## Q15
+**Q：** `git switch dev --merge` 是什么意思？为什么能作为补救措施？执行后 `main` 上还会保留那些未提交的修改吗？
+**A：**
+- `git switch dev --merge` 在切换到 `dev` 分支时，会尝试把当前工作区的未提交改动一起带过去，相当于将这些改动临时套用到 `dev` 上；若无冲突即可保留，遇到冲突则暂停让你解决。
+- 当误把 `dev` 的修改带到 `main` 时，使用该命令能把改动“搬回” `dev`，这样你就能在正确的分支上 `commit` 或 `stash`，从而补救。
+- 改动一直存在于工作区，而非 `main` 的提交历史；切换成功后它们附着在 `dev` 上，`main` 仍保持原状，之后再切回 `main`（在干净工作区下）看不到这些改动。
+## Q16
+**Q：** 如何手动制造一次 Git 冲突并进行练习？
+**A：**
+1. 保证 `main` 分支干净：`git status` 应为空；如有远端更新先 `git pull --ff-only origin main`。
+2. 在 `main` 上修改某文件同一段内容（改动 A），`git commit -m "feat: main change for conflict"`，`git push origin main`。
+3. 新建分支 `git switch -c feature/conflict-demo`，在同一位置做不同改动 B，`git commit -m "feat: conflicting change"`。
+4. 回到 `main` 再修改相同位置（改动 C），`git commit -m "feat: diverging main"` 并推送。
+5. 切换回 `feature/conflict-demo`，执行 `git pull --rebase origin main`（或 `git merge origin/main`），此时会因同一行有不同改动而产生冲突。
+6. 打开冲突文件，手动选择正确内容并删除 `<<<<<<<`/`=======`/`>>>>>>>` 标记，`git add` 后 `git commit` 或 `git rebase --continue`。
+7. 解决后 `git push origin feature/conflict-demo`（若 rebase 过需 `--force-with-lease`），即可练习冲突解决流程。
+## Q17
+**Q：** `git pull --ff-only origin main` 是什么意思？如果本地 `main` 已有改动会怎样？应如何处理冲突，`merge` 和 `rebase` 有何区别？
+**A：**
+- 该命令先抓取远端 `origin/main`，仅当本地 `main` 可以直接快进（没有额外提交）时才移动本地指针，因此能保证本地历史完全对齐远端且不生成额外 merge commit。
+- 若本地 `main` 有本地提交或未提交改动导致无法快进，命令会报错提示不能 fast-forward。此时需先处理：提交或 stash 本地修改，然后选择 `git merge origin/main`（生成 merge commit，保留分叉历史）或 `git rebase origin/main`（将本地提交改写到远端最新提交之后，得到线性历史）。冲突出现时，手动编辑冲突文件，`git add` 标记已解决，再 `git commit`（merge）或 `git rebase --continue`（rebase）。
+- `merge` 保留各分支原始拓扑，更易追溯谁在何时合并；`rebase` 让历史呈线性，便于阅读，但会改写提交哈希，需要谨慎在共享分支上使用。
+## Q18
+**Q：** `git merge` 时想保留原始提交信息怎么办？
+**A：**
+- `git merge --no-ff feature/branch`：禁止快进，生成 merge commit 并保留被合并分支的所有提交；历史中可看到完整提交信息。
+- 若想先检查再手动提交，可使用 `git merge --no-ff --no-commit feature/branch`，解决冲突后再 `git commit` 自定义合并说明。
+## Q19
+**Q：** 以下 workflow 是否合理：`main` 只用于同步远端，`dev` 负责开发？
+**A：**
+- 思路正确，但无需在 `main` 上额外提交。推荐流程：
+  1. `git fetch origin` 获取远端最新引用。
+  2. 在 `dev` 完成交付，直接 `git commit` 保存变更。
+  3. `git rebase origin/main`（或 `git merge origin/main`）将远端更新整合进 `dev`，冲突在 `dev` 上解决。
+  4. 功能验证后推送 `dev` 并创建 PR，或在 `main` 用 `git merge --no-ff dev` 合并再推送。
+- 只有在需要临时切换时才 `git stash`；若功能已完成，直接提交即可。保持 `main` 无本地自定义提交，可随时 `git switch main && git pull --ff-only` 快速同步远端。
